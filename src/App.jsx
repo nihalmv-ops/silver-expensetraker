@@ -7,6 +7,8 @@ import EntryModal from './components/EntryModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import StatementPreviewModal from './components/StatementPreviewModal';
 import OfficialStatementDocument from './components/OfficialStatementDocument';
+import PeriodicStatementModal from './components/PeriodicStatementModal';
+import OfficialPeriodicStatementDocument from './components/OfficialPeriodicStatementDocument';
 import { 
   getStoredEvents, 
   saveStoredEvents, 
@@ -33,7 +35,14 @@ export default function App() {
 
   const [previewEvent, setPreviewEvent] = useState(null); // Event for Statement Preview Modal
 
-  // Load stored data on initial mount & support direct query params
+  const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
+  const [periodicModalType, setPeriodicModalType] = useState('monthly'); // 'monthly' | 'yearly' | 'all'
+  const [activePeriodicStatementData, setActivePeriodicStatementData] = useState(null);
+
+  const handleOpenPeriodicStatements = (type = 'monthly') => {
+    setPeriodicModalType(type);
+    setIsPeriodicModalOpen(true);
+  };
   useEffect(() => {
     const loadedEvents = getStoredEvents();
     const loadedCategories = getStoredCategories();
@@ -246,6 +255,7 @@ export default function App() {
           activeEvent={activeEvent}
           onNavigateHome={() => setActiveEventId(null)}
           onDataImported={handleDataImported}
+          onOpenPeriodicStatements={handleOpenPeriodicStatements}
         />
 
         {/* Main Workspace / Dashboard Area */}
@@ -271,6 +281,7 @@ export default function App() {
               onEditEvent={handleEditEvent}
               onDeleteEvent={handleDeleteEventClick}
               onPreviewEvent={(evt) => setPreviewEvent(evt)}
+              onOpenPeriodicStatements={handleOpenPeriodicStatements}
             />
           )}
         </main>
@@ -320,6 +331,17 @@ export default function App() {
           onUpdateEvent={handleUpdateEventFromPreview}
         />
 
+        {/* Monthly & Yearly Periodic Statement Modal */}
+        <PeriodicStatementModal
+          isOpen={isPeriodicModalOpen}
+          onClose={() => setIsPeriodicModalOpen(false)}
+          events={events}
+          initialPeriodType={periodicModalType}
+          initialYear={new Date().getFullYear()}
+          initialMonth={new Date().getMonth() + 1}
+          onSetActiveStatementData={setActivePeriodicStatementData}
+        />
+
         {/* Subtle Professional Footer */}
         <footer className="border-t border-[#E7E9E7] bg-white py-5 sm:py-6 text-center text-xs text-[#6B7280]">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3">
@@ -339,7 +361,11 @@ export default function App() {
 
       {/* Dedicated A4 Print Statement Output (Hidden on screen, ONLY visible in @media print) */}
       <div className="hidden print-only-container">
-        <OfficialStatementDocument event={printTargetEvent} />
+        {isPeriodicModalOpen && activePeriodicStatementData ? (
+          <OfficialPeriodicStatementDocument statementData={activePeriodicStatementData} />
+        ) : (
+          <OfficialStatementDocument event={printTargetEvent} />
+        )}
       </div>
     </>
   );

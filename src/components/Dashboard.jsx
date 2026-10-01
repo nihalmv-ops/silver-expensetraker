@@ -14,7 +14,10 @@ import {
   Scale, 
   Sparkles,
   Edit2,
-  Printer
+  Printer,
+  CalendarDays,
+  FileSpreadsheet,
+  Layers,
 } from 'lucide-react';
 import { formatINR } from '../utils/currency';
 import { generateEventFinancialPDF } from '../utils/pdfGenerator';
@@ -26,6 +29,7 @@ export default function Dashboard({
   onEditEvent,
   onDeleteEvent,
   onPreviewEvent,
+  onOpenPeriodicStatements,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadingPdfId, setDownloadingPdfId] = useState(null);
@@ -150,6 +154,54 @@ export default function Dashboard({
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* Periodic Financial Statements (Monthly & Yearly PDF & Print) */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-[#E7E9E7] shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#FAF6EE] border border-[#9D8050]/20 flex items-center justify-center text-[#9D8050] shrink-0">
+            <FileSpreadsheet className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-[#161B18] tracking-tight">
+                Periodic Financial Statements
+              </h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1F3D2B]/10 text-[#1F3D2B]">
+                Official PDF & Print
+              </span>
+            </div>
+            <p className="text-xs text-[#6B7280]">
+              Generate dedicated A4 monthly financial statements, annual audits, or all-events business statements.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto">
+          <button
+            onClick={() => onOpenPeriodicStatements ? onOpenPeriodicStatements('monthly') : null}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#1A3826] bg-[#FAF6EE] hover:bg-[#F3EDE0] border border-[#9D8050]/40 rounded-xl shadow-2xs transition-all hover:border-[#9D8050] cursor-pointer"
+          >
+            <Calendar className="w-3.5 h-3.5 text-[#9D8050] shrink-0" />
+            <span>Monthly Statement</span>
+          </button>
+
+          <button
+            onClick={() => onOpenPeriodicStatements ? onOpenPeriodicStatements('yearly') : null}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#1A3826] bg-[#FAF6EE] hover:bg-[#F3EDE0] border border-[#9D8050]/40 rounded-xl shadow-2xs transition-all hover:border-[#9D8050] cursor-pointer"
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-[#9D8050] shrink-0" />
+            <span>Yearly Statement</span>
+          </button>
+
+          <button
+            onClick={() => onOpenPeriodicStatements ? onOpenPeriodicStatements('all') : null}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#1F3D2B] hover:bg-[#14281C] rounded-xl shadow-md transition-all cursor-pointer"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#C29C5E] shrink-0" />
+            <span>All Events Summary</span>
+          </button>
         </div>
       </div>
 

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight } from 'lucide-react';
+import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { exportBackupData, importBackupData } from '../utils/storage';
 
 export default function BrandHeader({
   activeEvent,
   onNavigateHome,
-  onDataImported
+  onDataImported,
+  onOpenPeriodicStatements,
 }) {
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   const [importStatus, setImportStatus] = useState('');
@@ -108,6 +109,16 @@ export default function BrandHeader({
                 <span className="text-[#9D8050] font-mono text-[11px] font-bold">{activeEvent.id}</span>
               </div>
             ) : null}
+
+            {/* Statements & Reports Button */}
+            <button
+              onClick={() => onOpenPeriodicStatements ? onOpenPeriodicStatements('monthly') : null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1A3826] bg-[#FAF6EE] hover:bg-[#F3EDE0] border border-[#9D8050]/40 rounded-lg shadow-2xs transition-all hover:border-[#9D8050] cursor-pointer"
+              title="Open Monthly & Yearly Financial Statements (PDF & Print)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#9D8050]" />
+              <span className="hidden sm:inline">Statements & Reports</span>
+            </button>
 
             {/* Backup & Portability Dropdown */}
             <div className="relative">
