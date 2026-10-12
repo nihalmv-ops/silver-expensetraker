@@ -8,6 +8,7 @@ import categoriesRouter from './routes/categories.js';
 import authRouter from './routes/auth.js';
 
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,8 +76,17 @@ app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/categories', categoriesRouter);
 
+// Serve frontend dist build if present (full-stack Render support)
+const distPath = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
 // Root route
 app.get('/', (req, res) => {
+  if (fs.existsSync(path.join(distPath, 'index.html'))) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
   res.json({
     message: 'Silver Catering API Server is running.',
     endpoints: {
