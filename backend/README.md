@@ -53,10 +53,34 @@ REST API backend for **Silver Catering — Event Income & Expense Calculator** b
 
 5. The server will start on `http://localhost:5050`. Test via: `http://localhost:5050/api/health`.
 
-## Free Cloud Deployment (e.g. Render / Railway)
+## Free Cloud Deployment on Render.com
 
-1. Create a free MongoDB Atlas database at [mongodb.com](https://www.mongodb.com/).
-2. Push your repo to GitHub.
-3. On Render.com or Railway.app, create a new Web Service pointing to the `backend/` directory.
-4. Set Environment Variable: `MONGODB_URI` = your MongoDB Atlas connection string.
-5. In the Silver Catering web application, click the **Cloud Sync** button in the header, paste your deployed backend URL, and click **Sync Now**!
+1. **Create Free MongoDB Cloud Database**:
+   - Go to [mongodb.com](https://www.mongodb.com/) and create a free shared cluster.
+   - Under Database Access, create a user and password.
+   - Under Network Access, whitelist IP: `0.0.0.0/0` (allow access from anywhere).
+   - Click **Connect** → **Drivers** and copy your connection string:
+     `mongodb+srv://<username>:<password>@cluster0.mongodb.net/silver_catering?retryWrites=true&w=majority`
+
+2. **Deploy on Render (render.com)**:
+   - Log into [render.com](https://render.com) (sign in with your GitHub account).
+   - Click **New +** → **Web Service**.
+   - Select your GitHub repository: `nihalmv-ops/silver-expensetraker`.
+   - Fill in the service configuration:
+     - **Name**: `silver-catering-backend`
+     - **Root Directory**: `backend`
+     - **Runtime**: `Node`
+     - **Build Command**: `npm install`
+     - **Start Command**: `node server.js`
+     - **Instance Type**: `Free`
+   - Scroll down to **Environment Variables** and click **Add Environment Variable**:
+     - Key: `MONGODB_URI`
+     - Value: `<your-mongodb-atlas-connection-string>`
+   - Click **Deploy Web Service**!
+
+3. **Connect Your Deployed Frontend**:
+   - When deployment completes, Render will provide your public URL (e.g. `https://silver-catering-backend.onrender.com`).
+   - Open your hosted frontend at [https://silverexpensetraker.vercel.app/](https://silverexpensetraker.vercel.app/).
+   - Click the **Cloud Sync** (or **Local Storage**) button in the top header.
+   - Paste your Render URL into **Backend API URL** and click **Test & Save**!
+   - Your frontend will display 🟢 **Cloud Synced** and automatically upload and synchronize all your events to MongoDB with zero data loss!
