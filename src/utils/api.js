@@ -63,7 +63,7 @@ export function setCurrentUser(user) {
 /**
  * Robust fetch wrapper with timeout and automatic JWT Bearer token attachment
  */
-async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 6000) {
+async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 12000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 

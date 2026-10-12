@@ -2,9 +2,14 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import dns from 'dns';
 import eventsRouter from '../backend/routes/events.js';
 import categoriesRouter from '../backend/routes/categories.js';
 import authRouter from '../backend/routes/auth.js';
+
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {}
 
 dotenv.config();
 
