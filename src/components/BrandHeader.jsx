@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight, FileSpreadsheet, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { exportBackupData, importBackupData } from '../utils/storage';
 
 export default function BrandHeader({
@@ -7,6 +7,9 @@ export default function BrandHeader({
   onNavigateHome,
   onDataImported,
   onOpenPeriodicStatements,
+  onOpenCloudSync,
+  syncStatus = 'disconnected',
+  isSyncing = false,
 }) {
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   const [importStatus, setImportStatus] = useState('');
@@ -120,11 +123,43 @@ export default function BrandHeader({
               <span className="hidden sm:inline">Statements & Reports</span>
             </button>
 
+            {/* Cloud Sync / MongoDB Status Button */}
+            <button
+              onClick={onOpenCloudSync}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-2xs transition-all cursor-pointer ${
+                syncStatus === 'connected'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  : isSyncing
+                  ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                  : 'bg-amber-50/80 text-amber-900 border-amber-300 hover:bg-amber-100'
+              }`}
+              title="Cloud Database Sync & MongoDB Settings"
+            >
+              {syncStatus === 'connected' ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden md:inline">Cloud Synced</span>
+                </>
+              ) : isSyncing ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                  <span className="hidden md:inline">Syncing...</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <CloudOff className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden md:inline">Local Storage</span>
+                </>
+              )}
+            </button>
+
             {/* Backup & Portability Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowBackupMenu(!showBackupMenu)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#4B5563] hover:text-[#161B18] bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-lg shadow-sm transition-all"
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#4B5563] hover:text-[#161B18] bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-lg shadow-sm transition-all cursor-pointer"
                 title="Backup and Restore Data"
               >
                 <ShieldCheck className="w-4 h-4 text-[#9D8050]" />

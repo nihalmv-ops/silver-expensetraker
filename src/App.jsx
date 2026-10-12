@@ -9,6 +9,7 @@ import StatementPreviewModal from './components/StatementPreviewModal';
 import OfficialStatementDocument from './components/OfficialStatementDocument';
 import PeriodicStatementModal from './components/PeriodicStatementModal';
 import OfficialPeriodicStatementDocument from './components/OfficialPeriodicStatementDocument';
+import CloudSyncModal from './components/CloudSyncModal';
 import { 
   getStoredEvents, 
   saveStoredEvents, 
@@ -16,11 +17,18 @@ import {
   saveStoredCategories 
 } from './utils/storage';
 import { formatINR } from './utils/currency';
+import { api } from './utils/api';
 
 export default function App() {
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState({ income: [], expense: [] });
   const [activeEventId, setActiveEventId] = useState(null);
+
+  // Cloud Sync & Backend Status
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('offline'); // 'connected' | 'offline'
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState('');
 
   // Modals state
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -43,11 +51,66 @@ export default function App() {
     setPeriodicModalType(type);
     setIsPeriodicModalOpen(true);
   };
+
+  // Safe bidirectional sync with backend & MongoDB
+  const handleSyncWithBackend = async (eventsToSync = events, categoriesToSync = categories) => {
+    setIsSyncing(true);
+    try {
+      const health = await api.checkHealth();
+      if (!health.connected) {
+        setSyncStatus('offline');
+        return { success: false, offline: true, error: health.error };
+      }
+
+      // Safe sync: upload local events to merge with MongoDB
+      const res = await api.syncEvents(eventsToSync);
+      if (res.success && Array.isArray(res.data)) {
+        // Merge into React state and LocalStorage - ZERO DATA LOSS
+        setEvents(res.data);
+        saveStoredEvents(res.data);
+
+        // Sync categories
+        const catRes = await api.syncCategories(categoriesToSync);
+        if (catRes.success && catRes.data) {
+          setCategories(catRes.data);
+          saveStoredCategories(catRes.data);
+        }
+
+        setSyncStatus('connected');
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastSyncTime(now);
+        return { success: true, count: res.totalCount };
+      } else {
+        setSyncStatus('offline');
+        return { success: false, error: res.error };
+      }
+    } catch (err) {
+      console.warn('Backend sync failed:', err);
+      setSyncStatus('offline');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   useEffect(() => {
+    // 1. Instantly load from LocalStorage (ZERO latency, zero data loss)
     const loadedEvents = getStoredEvents();
     const loadedCategories = getStoredCategories();
     setEvents(loadedEvents);
     setCategories(loadedCategories);
+
+    // 2. Silently attempt background sync with MongoDB if server is active
+    api.checkHealth().then((health) => {
+      if (health.connected) {
+        setSyncStatus('connected');
+        handleSyncWithBackend(loadedEvents, loadedCategories);
+      } else {
+        setSyncStatus('offline');
+      }
+    }).catch(() => {
+      setSyncStatus('offline');
+    });
 
     // Support deep-link / direct view via query params e.g. ?event=EVT-2026-0001&preview=true
     if (typeof window !== 'undefined') {
@@ -68,7 +131,7 @@ export default function App() {
 
   const activeEvent = events.find((e) => e.id === activeEventId) || null;
 
-  // Persist events helper
+  // Persist events helper (always guarantees local storage preservation)
   const updateEventsState = (newEvents) => {
     setEvents(newEvents);
     saveStoredEvents(newEvents);
@@ -101,20 +164,36 @@ export default function App() {
       updated = [eventPayload, ...events];
     }
     updateEventsState(updated);
-    setActiveEventId(eventPayload.id); // Open newly created or updated event
+    setActiveEventId(eventPayload.id);
+
+    // Background push to MongoDB if backend is reachable
+    api.saveEvent(eventPayload).then((res) => {
+      if (res.success) {
+        setSyncStatus('connected');
+        setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      }
+    }).catch(() => {});
   };
 
   const handleUpdateEventFromPreview = (updatedEvt) => {
     const existingIndex = events.findIndex((e) => e.id === updatedEvt.id);
     if (existingIndex >= 0) {
       const updated = [...events];
-      updated[existingIndex] = {
+      const mergedEvt = {
         ...updated[existingIndex],
         ...updatedEvt,
         updatedAt: new Date().toISOString(),
       };
+      updated[existingIndex] = mergedEvt;
       updateEventsState(updated);
-      setPreviewEvent(updated[existingIndex]);
+      setPreviewEvent(mergedEvt);
+
+      // Background push to MongoDB
+      api.saveEvent(mergedEvt).then((res) => {
+        if (res.success) {
+          setSyncStatus('connected');
+        }
+      }).catch(() => {});
     }
   };
 
@@ -188,6 +267,14 @@ export default function App() {
 
     updateEventsState(eventListCopy);
 
+    // Background push to MongoDB
+    api.saveEvent(currentEvent).then((res) => {
+      if (res.success) {
+        setSyncStatus('connected');
+        setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      }
+    }).catch(() => {});
+
     // Save custom category if new
     if (entryData.category) {
       const catKey = isIncome ? 'income' : 'expense';
@@ -198,6 +285,7 @@ export default function App() {
           [catKey]: [...existingCats, entryData.category],
         };
         updateCategoriesState(updatedCats);
+        api.syncCategories(updatedCats).catch(() => {});
       }
     }
   };
@@ -207,11 +295,18 @@ export default function App() {
     if (!deleteTarget) return;
 
     if (deleteTarget.type === 'event') {
-      const updated = events.filter((e) => e.id !== deleteTarget.item.id);
+      const deletedId = deleteTarget.item.id;
+      const updated = events.filter((e) => e.id !== deletedId);
       updateEventsState(updated);
-      if (activeEventId === deleteTarget.item.id) {
+      if (activeEventId === deletedId) {
         setActiveEventId(null);
       }
+      // Delete from MongoDB in background
+      api.deleteEvent(deletedId).then((res) => {
+        if (res.success) {
+          setSyncStatus('connected');
+        }
+      }).catch(() => {});
     } else if (deleteTarget.type === 'income' || deleteTarget.type === 'expense') {
       if (!activeEvent) return;
       const isIncome = deleteTarget.type === 'income';
@@ -229,6 +324,13 @@ export default function App() {
       eventListCopy[targetEventIndex] = currentEvent;
 
       updateEventsState(eventListCopy);
+
+      // Save updated event to MongoDB in background
+      api.saveEvent(currentEvent).then((res) => {
+        if (res.success) {
+          setSyncStatus('connected');
+        }
+      }).catch(() => {});
     }
 
     setDeleteTarget(null);
@@ -256,6 +358,9 @@ export default function App() {
           onNavigateHome={() => setActiveEventId(null)}
           onDataImported={handleDataImported}
           onOpenPeriodicStatements={handleOpenPeriodicStatements}
+          onOpenCloudSync={() => setIsCloudSyncOpen(true)}
+          syncStatus={syncStatus}
+          isSyncing={isSyncing}
         />
 
         {/* Main Workspace / Dashboard Area */}
@@ -340,6 +445,17 @@ export default function App() {
           initialYear={new Date().getFullYear()}
           initialMonth={new Date().getMonth() + 1}
           onSetActiveStatementData={setActivePeriodicStatementData}
+        />
+
+        {/* Cloud Sync & MongoDB Connection Modal */}
+        <CloudSyncModal
+          isOpen={isCloudSyncOpen}
+          onClose={() => setIsCloudSyncOpen(false)}
+          localEventsCount={events.length}
+          onSyncSuccess={() => handleSyncWithBackend(events, categories)}
+          syncStatus={syncStatus}
+          isSyncing={isSyncing}
+          lastSyncTime={lastSyncTime}
         />
 
         {/* Subtle Professional Footer */}
