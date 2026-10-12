@@ -14,6 +14,10 @@ export function getApiBaseUrl() {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
   }
+  // In production (e.g. https://silverexpensetraker.vercel.app), use relative path so API calls hit same-origin /api
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return '';
+  }
   return DEFAULT_LOCAL_URL;
 }
 
