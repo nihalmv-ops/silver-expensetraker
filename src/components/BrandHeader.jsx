@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight, FileSpreadsheet, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { ChefHat, ArrowLeft, Download, Upload, ShieldCheck, ChevronRight, FileSpreadsheet, Cloud, CloudOff, RefreshCw, User, LogOut, UserCheck } from 'lucide-react';
 import { exportBackupData, importBackupData } from '../utils/storage';
 
 export default function BrandHeader({
@@ -10,8 +10,12 @@ export default function BrandHeader({
   onOpenCloudSync,
   syncStatus = 'disconnected',
   isSyncing = false,
+  currentUser = null,
+  onOpenAuthModal,
+  onLogout,
 }) {
   const [showBackupMenu, setShowBackupMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [importStatus, setImportStatus] = useState('');
 
   const handleExportBackup = () => {
@@ -204,6 +208,57 @@ export default function BrandHeader({
                 </>
               )}
             </div>
+
+            {/* User Profile / Team Member Menu */}
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#1F3D2B] bg-[#F4EFE6] hover:bg-[#EAE2D2] border border-[#9D8050]/30 rounded-lg shadow-2xs transition-all cursor-pointer"
+                  title="Account & Team Profile"
+                >
+                  <div className="w-5 h-5 rounded-full bg-[#1F3D2B] text-white flex items-center justify-center text-[10px] font-bold">
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="hidden sm:inline font-medium max-w-[100px] truncate">{currentUser.name}</span>
+                </button>
+
+                {showUserMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowUserMenu(false)} />
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#E5E7EB] py-2 z-40 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <div className="font-bold text-xs text-[#161B18] truncate">{currentUser.name}</div>
+                        <div className="text-[11px] text-gray-500 truncate">{currentUser.email}</div>
+                        <span className="inline-block mt-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 rounded border border-emerald-200">
+                          {currentUser.role || 'Member'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          if (onLogout) onLogout();
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors cursor-pointer mt-1"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuthModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1F3D2B] hover:bg-[#162D20] rounded-lg shadow-sm transition-all cursor-pointer"
+                title="Sign In or Register New Team Member"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign In</span>
+              </button>
+            )}
 
             {importStatus && (
               <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded">

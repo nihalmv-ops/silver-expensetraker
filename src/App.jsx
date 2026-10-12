@@ -10,6 +10,7 @@ import OfficialStatementDocument from './components/OfficialStatementDocument';
 import PeriodicStatementModal from './components/PeriodicStatementModal';
 import OfficialPeriodicStatementDocument from './components/OfficialPeriodicStatementDocument';
 import CloudSyncModal from './components/CloudSyncModal';
+import AuthModal from './components/AuthModal';
 import { 
   getStoredEvents, 
   saveStoredEvents, 
@@ -17,12 +18,16 @@ import {
   saveStoredCategories 
 } from './utils/storage';
 import { formatINR } from './utils/currency';
-import { api } from './utils/api';
+import { api, getCurrentUser } from './utils/api';
 
 export default function App() {
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState({ income: [], expense: [] });
   const [activeEventId, setActiveEventId] = useState(null);
+
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Cloud Sync & Backend Status
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
@@ -112,6 +117,13 @@ export default function App() {
       setSyncStatus('offline');
     });
 
+    // 3. Verify authenticated user profile
+    api.getMe().then((res) => {
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+      }
+    }).catch(() => {});
+
     // Support deep-link / direct view via query params e.g. ?event=EVT-2026-0001&preview=true
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -128,6 +140,17 @@ export default function App() {
       }
     }
   }, []);
+
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    // After login or registration, immediately sync to share and pull all business data
+    handleSyncWithBackend();
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+  };
 
   const activeEvent = events.find((e) => e.id === activeEventId) || null;
 
@@ -361,6 +384,9 @@ export default function App() {
           onOpenCloudSync={() => setIsCloudSyncOpen(true)}
           syncStatus={syncStatus}
           isSyncing={isSyncing}
+          currentUser={currentUser}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Main Workspace / Dashboard Area */}
@@ -456,6 +482,15 @@ export default function App() {
           syncStatus={syncStatus}
           isSyncing={isSyncing}
           lastSyncTime={lastSyncTime}
+        />
+
+        {/* Authentication Login & Registration Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          currentUser={currentUser}
+          onAuthSuccess={handleAuthSuccess}
+          syncStatus={syncStatus}
         />
 
         {/* Subtle Professional Footer */}

@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import eventsRouter from '../backend/routes/events.js';
 import categoriesRouter from '../backend/routes/categories.js';
+import authRouter from '../backend/routes/auth.js';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/categories', categoriesRouter);
 

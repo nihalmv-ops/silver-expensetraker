@@ -1,9 +1,11 @@
 /**
- * API client for Silver Catering backend with offline fallback and zero data loss.
+ * API client for Silver Catering backend with authentication, offline fallback, and zero data loss.
  * Preserves localStorage at all times as the resilient primary or sync cache.
  */
 
 const STORAGE_KEY_BACKEND_URL = 'silver_catering_backend_url_v1';
+const STORAGE_KEY_TOKEN = 'silver_catering_token_v1';
+const STORAGE_KEY_USER = 'silver_catering_user_v1';
 const DEFAULT_LOCAL_URL = 'http://localhost:5050';
 
 export function getApiBaseUrl() {
@@ -29,8 +31,37 @@ export function setApiBaseUrl(url) {
   }
 }
 
+export function getAuthToken() {
+  return localStorage.getItem(STORAGE_KEY_TOKEN) || '';
+}
+
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem(STORAGE_KEY_TOKEN, token);
+  } else {
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+  }
+}
+
+export function getCurrentUser() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_USER);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCurrentUser(user) {
+  if (user) {
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(STORAGE_KEY_USER);
+  }
+}
+
 /**
- * Robust fetch wrapper with timeout
+ * Robust fetch wrapper with timeout and automatic JWT Bearer token attachment
  */
 async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
@@ -39,14 +70,18 @@ async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 6000) {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
   try {
     const res = await fetch(url, {
       ...options,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
+      headers,
     });
     clearTimeout(id);
 
@@ -88,6 +123,62 @@ export const api = {
       connected: false,
       error: res.error || 'Cannot reach server',
     };
+  },
+
+  /**
+   * Register a new team member/user
+   */
+  async register({ name, email, password, role = 'manager' }) {
+    const res = await fetchWithTimeout('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, role }),
+    });
+    if (res.success && res.token && res.user) {
+      setAuthToken(res.token);
+      setCurrentUser(res.user);
+    }
+    return res;
+  },
+
+  /**
+   * Log in user with email & password
+   */
+  async login({ email, password }) {
+    const res = await fetchWithTimeout('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.success && res.token && res.user) {
+      setAuthToken(res.token);
+      setCurrentUser(res.user);
+    }
+    return res;
+  },
+
+  /**
+   * Fetch current profile from token
+   */
+  async getMe() {
+    const res = await fetchWithTimeout('/api/auth/me', { method: 'GET' });
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+    }
+    return res;
+  },
+
+  /**
+   * Log out user
+   */
+  logout() {
+    setAuthToken(null);
+    setCurrentUser(null);
+  },
+
+  /**
+   * Get all registered team members
+   */
+  async getTeamMembers() {
+    return fetchWithTimeout('/api/auth/users', { method: 'GET' });
   },
 
   /**
