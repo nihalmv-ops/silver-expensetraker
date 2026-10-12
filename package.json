@@ -8,8 +8,10 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "server": "node server/server.js",
-    "server:dev": "npm --prefix server run dev"
+    "backend": "node backend/server.js",
+    "backend:dev": "npm --prefix backend run dev",
+    "server": "node backend/server.js",
+    "server:dev": "npm --prefix backend run dev"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

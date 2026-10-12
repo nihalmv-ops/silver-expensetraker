@@ -26,9 +26,9 @@ REST API backend for **Silver Catering — Event Income & Expense Calculator** b
 
 ## How to Run Locally
 
-1. **Navigate to the server directory**:
+1. **Navigate to the backend directory**:
    ```bash
-   cd server
+   cd backend
    ```
 
 2. **Install dependencies**:
@@ -39,7 +39,7 @@ REST API backend for **Silver Catering — Event Income & Expense Calculator** b
 3. **Configure Environment (`.env`)**:
    Create a `.env` file or edit existing:
    ```env
-   PORT=5000
+   PORT=5050
    MONGODB_URI=mongodb://127.0.0.1:27017/silver_catering
    ```
    *(Or paste your MongoDB Atlas free cloud database connection string)*
@@ -57,6 +57,6 @@ REST API backend for **Silver Catering — Event Income & Expense Calculator** b
 
 1. Create a free MongoDB Atlas database at [mongodb.com](https://www.mongodb.com/).
 2. Push your repo to GitHub.
-3. On Render.com or Railway.app, create a new Web Service pointing to the `server/` directory.
+3. On Render.com or Railway.app, create a new Web Service pointing to the `backend/` directory.
 4. Set Environment Variable: `MONGODB_URI` = your MongoDB Atlas connection string.
 5. In the Silver Catering web application, click the **Cloud Sync** button in the header, paste your deployed backend URL, and click **Sync Now**!

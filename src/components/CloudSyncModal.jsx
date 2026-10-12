@@ -232,7 +232,7 @@ export default function CloudSyncModal({
                 <div>
                   Open terminal in project directory:
                   <div className="bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[11px] my-1 selection:bg-emerald-800">
-                    cd server &amp;&amp; npm install &amp;&amp; npm run dev
+                    cd backend &amp;&amp; npm install &amp;&amp; npm run dev
                   </div>
                 </div>
               </div>
@@ -240,7 +240,7 @@ export default function CloudSyncModal({
               <div className="flex items-start gap-2">
                 <span className="bg-slate-200 text-slate-800 font-bold w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
                 <div>
-                  Configure MongoDB connection in <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-[11px]">server/.env</code>:
+                  Configure MongoDB connection in <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-[11px]">backend/.env</code>:
                   <div className="bg-slate-900 text-slate-300 p-2 rounded-lg font-mono text-[11px] my-1">
                     MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/silver_catering
                   </div>
