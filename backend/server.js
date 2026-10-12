@@ -102,9 +102,19 @@ async function startServer() {
     console.warn('Backend server is still running. Endpoints requiring database will return appropriate error responses until MongoDB is connected.');
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀 Silver Catering Backend Server listening on port ${PORT}`);
     console.log(`📡 Local API URL: http://localhost:${PORT}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n⚠️ Port ${PORT} is already in use by another process.`);
+      console.error(`👉 Run in PowerShell: Stop-Process -Name node -Force`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', err);
+    }
   });
 }
 
