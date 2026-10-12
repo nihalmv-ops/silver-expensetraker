@@ -68,3 +68,4 @@ app.use('/api/events', eventsRouter);
 app.use('/api/categories', categoriesRouter);
 
 export default app;
+
