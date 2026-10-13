@@ -7,6 +7,7 @@ const STORAGE_KEY_BACKEND_URL = 'silver_catering_backend_url_v1';
 const STORAGE_KEY_TOKEN = 'silver_catering_token_v1';
 const STORAGE_KEY_USER = 'silver_catering_user_v1';
 const DEFAULT_LOCAL_URL = 'http://localhost:5050';
+export const DEFAULT_PRODUCTION_URL = 'https://silver-expensetraker.onrender.com';
 
 export function getApiBaseUrl() {
   const custom = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
@@ -16,9 +17,12 @@ export function getApiBaseUrl() {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
   }
-  // In production (e.g. https://silverexpensetraker.vercel.app), use relative path so API calls hit same-origin /api
+  // In production (e.g. https://silverexpensetraker.vercel.app), default to the live Render backend
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return '';
+    if (window.location.hostname.includes('onrender.com')) {
+      return '';
+    }
+    return DEFAULT_PRODUCTION_URL;
   }
   return DEFAULT_LOCAL_URL;
 }
@@ -63,7 +67,7 @@ export function setCurrentUser(user) {
 /**
  * Robust fetch wrapper with timeout and automatic JWT Bearer token attachment
  */
-async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 12000) {
+async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 30000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 

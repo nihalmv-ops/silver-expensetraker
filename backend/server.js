@@ -15,10 +15,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Fix for Windows / ISP DNS resolution issues with MongoDB Atlas SRV records
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch {
-  // Use default DNS if custom cannot be set
+// Only apply on Windows to prevent interfering with Linux container DNS resolvers on Render
+if (process.platform === 'win32') {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {
+    // Use default DNS if custom cannot be set
+  }
 }
 
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -34,6 +37,9 @@ if (MONGODB_URI.startsWith('mongodb+srv://') && !MONGODB_URI.includes('?')) {
     MONGODB_URI = MONGODB_URI.replace(/\/+$/, '') + '/silver_catering?retryWrites=true&w=majority';
   }
 }
+
+// Disable Mongoose internal command buffering to prevent hanging queries on disconnect
+mongoose.set('bufferCommands', false);
 
 // Middleware
 app.use(cors());
@@ -59,16 +65,35 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Guard against queries when DB is disconnected so requests don't hang
-app.use('/api', (req, res, next) => {
+// Smart database connection guard for all /api endpoints (except /api/health)
+app.use('/api', async (req, res, next) => {
   if (req.path === '/health') return next();
-  if (mongoose.connection.readyState !== 1) {
-    return res.status(503).json({
-      success: false,
-      error: 'Database is currently connecting or offline. Please check MongoDB Atlas connection.',
-    });
+
+  // If already connected, proceed immediately
+  if (mongoose.connection.readyState === 1) {
+    return next();
   }
-  next();
+
+  // If disconnected, trigger reconnection attempt
+  if (mongoose.connection.readyState === 0) {
+    connectDb().catch(() => {});
+  }
+
+  // If connecting (2) or reconnecting, wait up to 8 seconds for connection to complete (handles cold starts)
+  let waitCount = 0;
+  while (mongoose.connection.readyState !== 1 && waitCount < 16) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    waitCount++;
+  }
+
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  return res.status(503).json({
+    success: false,
+    error: 'Database is establishing connection to MongoDB Atlas. Please wait a few seconds and try again.',
+  });
 });
 
 // API Routes
@@ -99,18 +124,47 @@ app.get('/', (req, res) => {
   });
 });
 
-// Database connection & Server Startup
-async function startServer() {
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+};
+
+let isConnecting = false;
+
+async function connectDb() {
+  if (mongoose.connection.readyState === 1 || isConnecting) {
+    return;
+  }
+  isConnecting = true;
   try {
-    console.log('Connecting to MongoDB...');
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 8000,
-    });
+    console.log('Connecting to MongoDB Atlas...');
+    await mongoose.connect(MONGODB_URI, mongooseOptions);
     console.log('✅ MongoDB connected successfully to:', MONGODB_URI.includes('@') ? 'MongoDB Atlas Cloud' : MONGODB_URI);
   } catch (err) {
     console.warn('⚠️ Warning: MongoDB connection error:', err.message);
-    console.warn('Backend server is still running. Endpoints requiring database will return appropriate error responses until MongoDB is connected.');
+  } finally {
+    isConnecting = false;
   }
+}
+
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connection established');
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected! Retrying connection in 5s...');
+  setTimeout(() => connectDb().catch(() => {}), 5000);
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('⚠️ MongoDB connection error:', err.message);
+});
+
+// Database connection & Server Startup
+async function startServer() {
+  await connectDb();
 
   const server = app.listen(PORT, () => {
     console.log(`🚀 Silver Catering Backend Server listening on port ${PORT}`);

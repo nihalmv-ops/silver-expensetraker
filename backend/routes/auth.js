@@ -80,7 +80,10 @@ router.post('/register', async (req, res) => {
     });
   } catch (err) {
     console.error('Registration error:', err);
-    return res.status(500).json({ success: false, error: err.message });
+    const message = err.message && err.message.includes('buffering timed out')
+      ? 'Database connection timed out. MongoDB Atlas is connecting, please try again in a moment.'
+      : (err.message || 'Registration failed');
+    return res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -136,7 +139,10 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    return res.status(500).json({ success: false, error: err.message });
+    const message = err.message && err.message.includes('buffering timed out')
+      ? 'Database connection timed out. MongoDB Atlas is connecting, please try again in a moment.'
+      : (err.message || 'Login failed');
+    return res.status(500).json({ success: false, error: message });
   }
 });
 

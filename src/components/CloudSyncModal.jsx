@@ -177,8 +177,25 @@ export default function CloudSyncModal({
                 )}
               </button>
             </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] text-slate-500 font-medium mr-1">Quick Presets:</span>
+              <button
+                type="button"
+                onClick={() => setBackendUrlInput('https://silver-expensetraker.onrender.com')}
+                className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors font-medium flex items-center gap-1 cursor-pointer"
+              >
+                <Cloud className="w-3 h-3" /> Render Cloud
+              </button>
+              <button
+                type="button"
+                onClick={() => setBackendUrlInput('http://localhost:5050')}
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors font-medium flex items-center gap-1 cursor-pointer"
+              >
+                <Laptop className="w-3 h-3" /> Localhost:5050
+              </button>
+            </div>
             <p className="text-[11px] text-slate-500">
-              Default: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono">http://localhost:5050</code> or your deployed backend URL (Render, Railway, etc.).
+              Live Cloud: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono">https://silver-expensetraker.onrender.com</code>
             </p>
           </div>
 

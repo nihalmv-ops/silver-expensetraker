@@ -7,11 +7,15 @@ import eventsRouter from '../backend/routes/events.js';
 import categoriesRouter from '../backend/routes/categories.js';
 import authRouter from '../backend/routes/auth.js';
 
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch {}
+if (process.platform === 'win32') {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {}
+}
 
 dotenv.config();
+
+mongoose.set('bufferCommands', false);
 
 const app = express();
 

@@ -13,5 +13,5 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
-        generateValue: true
+        value: silver_catering_secret_jwt_key_2026
 
