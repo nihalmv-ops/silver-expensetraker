@@ -38,6 +38,7 @@ export default function PeriodicStatementModal({
   const [endDate, setEndDate] = useState('');
   const [preparedBy, setPreparedBy] = useState('');
   const [notes, setNotes] = useState('');
+  const [layoutMode, setLayoutMode] = useState('singlePage'); // 'singlePage' | 'multiPage'
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function PeriodicStatementModal({
   const handleSavePdf = async () => {
     try {
       setIsDownloading(true);
-      await generatePeriodicFinancialPDF(statementData);
+      await generatePeriodicFinancialPDF(statementData, { layoutMode });
     } catch (err) {
       console.error('Periodic PDF error:', err);
       alert('Failed to generate PDF statement: ' + err.message);
@@ -112,8 +113,12 @@ export default function PeriodicStatementModal({
                   <h2 className="text-xs sm:text-base font-bold tracking-tight text-white truncate">
                     {periodType === 'monthly' ? 'Monthly' : periodType === 'yearly' ? 'Annual' : 'Overall'} Financial Statement
                   </h2>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#C29C5E] border border-[#C29C5E]/30 shrink-0">
-                    {statementData.periodSubtitle}
+                  <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${
+                    layoutMode === 'singlePage'
+                      ? 'bg-emerald-500/20 text-[#A3D9B5] border-emerald-500/40'
+                      : 'bg-white/10 text-[#C29C5E] border-[#C29C5E]/30'
+                  }`}>
+                    {layoutMode === 'singlePage' ? '1 A4 Page Model (All Details)' : `${statementData.periodSubtitle}`}
                   </span>
                 </div>
                 <p className="text-[10.5px] sm:text-[11px] text-gray-300 truncate">
@@ -131,14 +136,43 @@ export default function PeriodicStatementModal({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+            {/* Model Selector Toggle */}
+            <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('singlePage')}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                  layoutMode === 'singlePage'
+                    ? 'bg-[#1F3D2B] text-white shadow-xs border border-[#A3D9B5]/40'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Fits all periodic details into 1 single A4 Page"
+              >
+                <Layers className="w-3.5 h-3.5 text-[#C29C5E]" />
+                <span>1 A4 Page Model</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('multiPage')}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                  layoutMode === 'multiPage'
+                    ? 'bg-[#1F3D2B] text-white shadow-xs border border-[#A3D9B5]/40'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Multi-page expanded periodic statement"
+              >
+                <span>Multi-Page</span>
+              </button>
+            </div>
+
             <button
               onClick={handlePrint}
               className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#111827] bg-white hover:bg-gray-100 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               title="Print official statement"
             >
               <Printer className="w-3.5 h-3.5 text-[#1F3D2B] shrink-0" />
-              <span>PRINT STATEMENT</span>
+              <span>PRINT</span>
             </button>
 
             <button
@@ -302,7 +336,7 @@ export default function PeriodicStatementModal({
 
         {/* Scrollable A4 Document Viewport */}
         <div className="flex-1 overflow-auto p-2.5 sm:p-6 md:p-8 bg-[#525659]">
-          <OfficialPeriodicStatementDocument statementData={statementData} />
+          <OfficialPeriodicStatementDocument statementData={statementData} layoutMode={layoutMode} />
         </div>
       </div>
     </div>

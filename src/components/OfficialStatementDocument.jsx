@@ -6,11 +6,11 @@ import {
   getDocumentNo,
 } from '../utils/statementPagination.js';
 
-export default function OfficialStatementDocument({ event }) {
+export default function OfficialStatementDocument({ event, layoutMode = 'singlePage' }) {
   const pages = useMemo(() => {
     if (!event) return [];
-    return paginateEventStatement(event);
-  }, [event]);
+    return paginateEventStatement(event, { layoutMode });
+  }, [event, layoutMode]);
 
   if (!event || pages.length === 0) return null;
 
@@ -49,16 +49,16 @@ export default function OfficialStatementDocument({ event }) {
         return (
           <div
             key={page.pageNumber}
-            className={`a4-statement-page bg-white text-[#161B18] min-w-[680px] sm:min-w-0 w-full max-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[12mm] shadow-[0_6px_30px_rgba(0,0,0,0.12)] border border-[#D1D5DB] flex flex-col justify-between box-border print:min-w-0 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:min-h-[273mm] ${
+            className={`a4-statement-page bg-white text-[#161B18] min-w-[680px] sm:min-w-0 w-full max-w-[210mm] min-h-[297mm] p-[8mm] sm:p-[10mm] shadow-[0_6px_30px_rgba(0,0,0,0.12)] border border-[#D1D5DB] flex flex-col justify-between box-border print:min-w-0 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:min-h-[277mm] ${
               !isLastPage ? 'print-page-break' : ''
             }`}
           >
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-3.5">
               {!page.isContinuation ? (
-                <header className="pb-3 border-b border-[#161B18]">
-                  <div className="flex items-center justify-between gap-4 pb-3 border-b border-[#D1D5DB]">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-14 h-14 rounded-lg border border-[#D1D5DB] bg-white p-1 flex items-center justify-center shrink-0">
+                <header className="pb-2.5 border-b border-[#161B18]">
+                  <div className="flex items-center justify-between gap-4 pb-2.5 border-b border-[#D1D5DB]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg border border-[#D1D5DB] bg-white p-1 flex items-center justify-center shrink-0">
                         <img
                           src={logoUrl}
                           alt="Silver Catering Logo"
@@ -69,28 +69,28 @@ export default function OfficialStatementDocument({ event }) {
                         />
                       </div>
                       <div>
-                        <h1 className="text-xl font-bold tracking-[0.06em] text-[#111827] uppercase leading-tight">
+                        <h1 className="text-lg font-bold tracking-[0.06em] text-[#111827] uppercase leading-tight">
                           SILVER CATERING
                         </h1>
-                        <p className="text-[10px] font-semibold tracking-[0.18em] text-[#4B5563] uppercase mt-0.5">
+                        <p className="text-[9.5px] font-semibold tracking-[0.16em] text-[#4B5563] uppercase mt-0.5">
                           PREMIUM CATERING SERVICES IN KERALA
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-right text-[10.5px] text-[#4B5563] leading-relaxed">
+                    <div className="text-right text-[10px] text-[#4B5563] leading-relaxed">
                       <div className="font-semibold text-[#111827]">www.silvercatering.in</div>
                       <div>Valanchery, Kerala • +91 98464 15767</div>
                       <div>Silvereventsandcaters@gmail.com</div>
                     </div>
                   </div>
 
-                  <div className="pt-2.5 flex items-center justify-between gap-2">
-                    <h2 className="text-sm font-bold tracking-[0.12em] uppercase text-[#111827]">
+                  <div className="pt-2 flex items-center justify-between gap-2">
+                    <h2 className="text-xs sm:text-sm font-bold tracking-[0.12em] uppercase text-[#111827]">
                       EVENT FINANCIAL STATEMENT
                     </h2>
 
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[11px] text-[#374151]">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-[#374151]">
                       <div>
                         <span className="text-[#6B7280] font-medium">Document No: </span>
                         <span className="font-mono font-bold text-[#111827]">{documentNo}</span>
@@ -103,7 +103,7 @@ export default function OfficialStatementDocument({ event }) {
                   </div>
                 </header>
               ) : (
-                <header className="pb-2.5 border-b border-[#9CA3AF]">
+                <header className="pb-2 border-b border-[#9CA3AF]">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2.5">
                       <img
@@ -130,7 +130,7 @@ export default function OfficialStatementDocument({ event }) {
                     </span>
                   </div>
 
-                  <div className="mt-1.5 pt-1.5 border-t border-[#E5E7EB] flex items-center justify-between text-[10.5px] text-[#4B5563]">
+                  <div className="mt-1.5 pt-1.5 border-t border-[#E5E7EB] flex items-center justify-between text-[10px] text-[#4B5563]">
                     <div>
                       <span className="text-[#6B7280]">Event: </span>
                       <span className="font-semibold text-[#111827]">{event.name}</span>
@@ -152,18 +152,18 @@ export default function OfficialStatementDocument({ event }) {
 
               {page.showEventDetails && (
                 <section className="print-avoid-break">
-                  <div className="text-[10.5px] font-bold tracking-[0.12em] uppercase text-[#111827] mb-1.5">
+                  <div className="text-[10px] font-bold tracking-[0.12em] uppercase text-[#111827] mb-1">
                     EVENT DETAILS
                   </div>
-                  <div className="border border-[#D1D5DB] bg-[#FAFAFA] px-4 py-2.5 grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11.5px]">
+                  <div className="border border-[#D1D5DB] bg-[#FAFAFA] px-3.5 py-2 grid grid-cols-2 gap-x-6 gap-y-1 text-[11px]">
                     <div className="space-y-1">
-                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-1">
+                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-0.5">
                         <span className="text-[#6B7280] font-medium shrink-0">Event Name:</span>
-                        <span className="font-bold text-[#111827] text-right">{event.name || '—'}</span>
+                        <span className="font-bold text-[#111827] text-right truncate">{event.name || '—'}</span>
                       </div>
-                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-1">
+                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-0.5">
                         <span className="text-[#6B7280] font-medium shrink-0">Client:</span>
-                        <span className="font-semibold text-[#111827] text-right">{event.clientName || '—'}</span>
+                        <span className="font-semibold text-[#111827] text-right truncate">{event.clientName || '—'}</span>
                       </div>
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-[#6B7280] font-medium shrink-0">Event Date:</span>
@@ -172,17 +172,17 @@ export default function OfficialStatementDocument({ event }) {
                     </div>
 
                     <div className="space-y-1">
-                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-1">
+                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-0.5">
                         <span className="text-[#6B7280] font-medium shrink-0">Venue:</span>
-                        <span className="font-medium text-[#111827] text-right">{event.venue || '—'}</span>
+                        <span className="font-medium text-[#111827] text-right truncate">{event.venue || '—'}</span>
                       </div>
-                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-1">
+                      <div className="flex items-baseline justify-between gap-2 border-b border-[#E5E7EB] pb-0.5">
                         <span className="text-[#6B7280] font-medium shrink-0">Event ID:</span>
                         <span className="font-mono font-semibold text-[#111827] text-right">{event.id || '—'}</span>
                       </div>
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-[#6B7280] font-medium shrink-0">Coordinator:</span>
-                        <span className="font-medium text-[#111827] text-right">
+                        <span className="font-medium text-[#111827] text-right truncate">
                           {event.coordinator && event.coordinator.trim()
                             ? event.coordinator
                             : '____________________'}
@@ -194,6 +194,132 @@ export default function OfficialStatementDocument({ event }) {
               )}
 
               {page.sections.map((section, sIdx) => {
+                // 1-PAGE A4 MASTER MODEL: SIDE-BY-SIDE DUAL TABLES (Guaranteed 1 A4 Page)
+                if (section.type === 'sideBySideTables') {
+                  const incomeList = section.incomeEntries || [];
+                  const expenseList = section.expenseEntries || [];
+
+                  return (
+                    <section key={`sideBySide-${sIdx}`} className="pt-0.5 print-avoid-break">
+                      <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3">
+                        {/* LEFT: INCOME TABLE */}
+                        <div className="border border-[#D1D5DB] bg-white flex flex-col justify-between">
+                          <div>
+                            <div className="bg-[#1F3D2B] text-white px-2.5 py-1 flex items-center justify-between">
+                              <span className="text-[9.5px] font-bold tracking-[0.12em] uppercase">
+                                INCOME DETAILS ({incomeList.length})
+                              </span>
+                              <span className="text-[9px] text-[#A3D9B5] font-mono">Amount (₹)</span>
+                            </div>
+                            <table className="w-full border-collapse text-[10px]">
+                              <thead>
+                                <tr className="bg-[#F3F4F6] text-[#374151] border-b border-[#D1D5DB]">
+                                  <th className="py-1 px-1 text-center font-bold border-r border-[#E5E7EB] w-[24px]">#</th>
+                                  <th className="py-1 px-1.5 text-left font-bold border-r border-[#E5E7EB]">Item</th>
+                                  <th className="py-1 px-1 text-center font-bold border-r border-[#E5E7EB] w-[40px]">Qty</th>
+                                  <th className="py-1 px-1.5 text-right font-bold w-[65px]">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#E5E7EB]">
+                                {incomeList.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={4} className="py-3 text-center text-gray-400 italic text-[9.5px]">
+                                      No income entries recorded
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  incomeList.map((row, idx) => (
+                                    <tr key={row.id || idx} className="even:bg-[#FAFAFA]">
+                                      <td className="py-1 px-1 text-center font-mono text-[9px] text-gray-500 border-r border-[#E5E7EB]">
+                                        {row.rowNo || String(idx + 1).padStart(2, '0')}
+                                      </td>
+                                      <td className="py-1 px-1.5 border-r border-[#E5E7EB]">
+                                        <div className="font-semibold text-[#111827] leading-tight text-[10px]">{row.item}</div>
+                                        {row.description && (
+                                          <div className="text-[8.5px] text-gray-500 truncate max-w-[140px]">{row.description}</div>
+                                        )}
+                                      </td>
+                                      <td className="py-1 px-1 text-center text-gray-600 border-r border-[#E5E7EB] text-[9px]">
+                                        {row.quantity ? `${row.quantity} ${row.unit || ''}` : '—'}
+                                      </td>
+                                      <td className="py-1 px-1.5 text-right font-bold text-[#1F3D2B] whitespace-nowrap text-[10px]">
+                                        {formatINR(row.amount)}
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="border-t border-[#1F3D2B] bg-[#EBF5EE] px-2.5 py-1 flex items-center justify-between">
+                            <span className="text-[9.5px] font-bold text-[#1F3D2B] uppercase tracking-wider">TOTAL INCOME</span>
+                            <span className="text-[11px] font-bold text-[#1F3D2B]">{formatINR(totalIncome)}</span>
+                          </div>
+                        </div>
+
+                        {/* RIGHT: EXPENSE TABLE */}
+                        <div className="border border-[#D1D5DB] bg-white flex flex-col justify-between">
+                          <div>
+                            <div className="bg-[#991B1B] text-white px-2.5 py-1 flex items-center justify-between">
+                              <span className="text-[9.5px] font-bold tracking-[0.12em] uppercase">
+                                EXPENSE DETAILS ({expenseList.length})
+                              </span>
+                              <span className="text-[9px] text-red-200 font-mono">Amount (₹)</span>
+                            </div>
+                            <table className="w-full border-collapse text-[10px]">
+                              <thead>
+                                <tr className="bg-[#F3F4F6] text-[#374151] border-b border-[#D1D5DB]">
+                                  <th className="py-1 px-1 text-center font-bold border-r border-[#E5E7EB] w-[24px]">#</th>
+                                  <th className="py-1 px-1.5 text-left font-bold border-r border-[#E5E7EB]">Expense Item</th>
+                                  <th className="py-1 px-1 text-center font-bold border-r border-[#E5E7EB] w-[48px]">Category</th>
+                                  <th className="py-1 px-1.5 text-right font-bold w-[65px]">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#E5E7EB]">
+                                {expenseList.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={4} className="py-3 text-center text-gray-400 italic text-[9.5px]">
+                                      No expense entries recorded
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  expenseList.map((row, idx) => (
+                                    <tr key={row.id || idx} className="even:bg-[#FAFAFA]">
+                                      <td className="py-1 px-1 text-center font-mono text-[9px] text-gray-500 border-r border-[#E5E7EB]">
+                                        {row.rowNo || String(idx + 1).padStart(2, '0')}
+                                      </td>
+                                      <td className="py-1 px-1.5 border-r border-[#E5E7EB]">
+                                        <div className="font-semibold text-[#111827] leading-tight text-[10px]">{row.item}</div>
+                                        {row.description && (
+                                          <div className="text-[8.5px] text-gray-500 truncate max-w-[140px]">{row.description}</div>
+                                        )}
+                                      </td>
+                                      <td className="py-1 px-1 text-center text-gray-600 border-r border-[#E5E7EB] text-[8.5px]">
+                                        <span className="px-1 py-0.5 rounded bg-gray-100 text-gray-600 truncate block max-w-[48px]">
+                                          {row.category || '—'}
+                                        </span>
+                                      </td>
+                                      <td className="py-1 px-1.5 text-right font-bold text-red-700 whitespace-nowrap text-[10px]">
+                                        {formatINR(row.amount)}
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="border-t border-[#991B1B] bg-red-50 px-2.5 py-1 flex items-center justify-between">
+                            <span className="text-[9.5px] font-bold text-red-800 uppercase tracking-wider">TOTAL EXPENSE</span>
+                            <span className="text-[11px] font-bold text-red-700">{formatINR(totalExpense)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  );
+                }
+
                 if (section.type === 'incomeTable' || section.type === 'expenseTable') {
                   const isIncome = section.type === 'incomeTable';
                   const baseTitle = isIncome ? 'INCOME DETAILS' : 'EXPENSE DETAILS';

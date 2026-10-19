@@ -213,7 +213,57 @@ export function buildPeriodicStatementData(events = [], periodConfig = {}) {
 /**
  * Paginates the periodic statement data into smart A4 pages.
  */
-export function paginatePeriodicStatement(statementData) {
+export function paginatePeriodicStatement(statementData, options = {}) {
+  const { layoutMode = 'singlePage' } = options;
+
+  // SINGLE-PAGE A4 MASTER MODEL (Fits all periodic details on 1 A4 Page)
+  if (layoutMode === 'singlePage') {
+    const sections = [];
+    const eventRows = statementData.eventRows || [];
+
+    if (eventRows.length === 0) {
+      sections.push({
+        type: 'emptyEvents',
+        message: 'No catering events found in this statement period.',
+      });
+    } else {
+      sections.push({
+        type: 'eventsTable',
+        isContinued: false,
+        rows: eventRows,
+        showTotal: true,
+      });
+    }
+
+    if (
+      (statementData.incomeCategories && statementData.incomeCategories.length > 0) ||
+      (statementData.expenseCategories && statementData.expenseCategories.length > 0)
+    ) {
+      sections.push({
+        type: 'categoriesBreakdown',
+        incomeCategories: statementData.incomeCategories || [],
+        expenseCategories: statementData.expenseCategories || [],
+      });
+    }
+
+    sections.push({ type: 'financialSummary' });
+    sections.push({ type: 'notes' });
+    sections.push({ type: 'signatures' });
+
+    return [
+      {
+        pageNumber: 1,
+        totalPages: 1,
+        isContinuation: false,
+        showExecutiveSummary: true,
+        layoutMode: 'singlePage',
+        sections,
+        continuesOnNextPage: false,
+      },
+    ];
+  }
+
+  // MULTI-PAGE EXPANDED MODEL
   const MAX_CONTENT_HEIGHT_MM = 259;
   const PAGE1_HEADER_AND_SUMMARY_MM = 65;
   const CONTINUATION_HEADER_MM = 22;
@@ -233,6 +283,7 @@ export function paginatePeriodicStatement(statementData) {
     sections: [],
     usedHeightMm: PAGE1_HEADER_AND_SUMMARY_MM,
     continuesOnNextPage: false,
+    layoutMode: 'multiPage',
   };
   pages.push(currentPage);
 

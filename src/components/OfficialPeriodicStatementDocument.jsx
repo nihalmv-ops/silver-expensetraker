@@ -2,11 +2,11 @@ import React, { useMemo } from 'react';
 import { formatINR } from '../utils/currency.js';
 import { paginatePeriodicStatement } from '../utils/periodicStatementPagination.js';
 
-export default function OfficialPeriodicStatementDocument({ statementData }) {
+export default function OfficialPeriodicStatementDocument({ statementData, layoutMode = 'singlePage' }) {
   const pages = useMemo(() => {
     if (!statementData) return [];
-    return paginatePeriodicStatement(statementData);
-  }, [statementData]);
+    return paginatePeriodicStatement(statementData, { layoutMode });
+  }, [statementData, layoutMode]);
 
   if (!statementData || pages.length === 0) return null;
 
@@ -45,7 +45,7 @@ export default function OfficialPeriodicStatementDocument({ statementData }) {
         return (
           <div
             key={page.pageNumber}
-            className={`a4-statement-page bg-white text-[#161B18] min-w-[680px] sm:min-w-0 w-full max-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[12mm] shadow-[0_6px_30px_rgba(0,0,0,0.12)] border border-[#D1D5DB] flex flex-col justify-between box-border print:min-w-0 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:min-h-[273mm] ${
+            className={`a4-statement-page bg-white text-[#161B18] min-w-[680px] sm:min-w-0 w-full max-w-[210mm] min-h-[297mm] p-[8mm] sm:p-[10mm] shadow-[0_6px_30px_rgba(0,0,0,0.12)] border border-[#D1D5DB] flex flex-col justify-between box-border print:min-w-0 print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:min-h-[277mm] ${
               !isLastPage ? 'print-page-break' : ''
             }`}
           >

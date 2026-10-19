@@ -74,8 +74,10 @@ async function loadOutfitFont() {
  * Builds the jsPDF document using the exact same Smart A4 Pagination engine
  * (`paginateEventStatement`) and visual design as `OfficialStatementDocument.jsx`.
  */
-async function buildStatementPdfDoc(event) {
+async function buildStatementPdfDoc(event, options = {}) {
   if (!event) throw new Error('Event data is required to generate PDF');
+
+  const { layoutMode = 'singlePage' } = options;
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -85,8 +87,8 @@ async function buildStatementPdfDoc(event) {
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const margin = 12; // @page { size: A4; margin: 12mm; }
-  const contentWidth = pageWidth - margin * 2; // 186mm
+  const margin = layoutMode === 'singlePage' ? 10 : 12; // 10mm for singlePage to ensure perfect breathing room
+  const contentWidth = pageWidth - margin * 2;
   const rightEdge = pageWidth - margin;
 
   // Load Outfit font for ₹ symbol
@@ -129,7 +131,7 @@ async function buildStatementPdfDoc(event) {
   const generatedDate = formatFullDate(new Date());
   const eventDateFormatted = formatFullDate(event.date);
 
-  const pages = paginateEventStatement(event);
+  const pages = paginateEventStatement(event, { layoutMode });
 
   pages.forEach((page, pageIndex) => {
     if (pageIndex > 0) {
@@ -312,9 +314,236 @@ async function buildStatementPdfDoc(event) {
     }
 
     // ==================================================
-    // 3. SECTIONS (INCOME TABLE, EXPENSE TABLE, SUMMARY, NOTES, SIGNATURES)
+    // 3. SECTIONS (SIDE-BY-SIDE TABLES, INCOME TABLE, EXPENSE TABLE, SUMMARY, NOTES, SIGNATURES)
     // ==================================================
     page.sections.forEach((section) => {
+      // 1-PAGE A4 MASTER MODEL: SIDE-BY-SIDE DUAL TABLES
+      if (section.type === 'sideBySideTables') {
+        const incomeList = section.incomeEntries || [];
+        const expenseList = section.expenseEntries || [];
+
+        const colGap = 4;
+        const tableW = (contentWidth - colGap) / 2; // 93mm in singlePage
+        const leftX = margin;
+        const rightX = margin + tableW + colGap;
+
+        const maxCount = Math.max(incomeList.length, expenseList.length);
+        const rowH = maxCount > 15 ? 4.6 : maxCount > 8 ? 5.2 : 5.8;
+
+        let leftY = y;
+        let rightY = y;
+        const bannerH = 5.2;
+        const theadH = 4.8;
+        const totBarH = 5.8;
+
+        // ----------------------------------------------------
+        // LEFT: INCOME TABLE (Emerald Brand Theme)
+        // ----------------------------------------------------
+        // Header Banner
+        doc.setFillColor(31, 61, 43); // #1F3D2B
+        doc.rect(leftX, leftY, tableW, bannerH, 'F');
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`INCOME DETAILS (${incomeList.length})`, leftX + 2.5, leftY + 3.7);
+        doc.setFontSize(6.8);
+        doc.setTextColor(163, 217, 181);
+        doc.text('Amount in INR (₹)', leftX + tableW - 2.5, leftY + 3.7, { align: 'right' });
+        leftY += bannerH;
+
+        // Column widths for Income: No (8) | Item & Desc (tableW - 44) | Qty (14) | Amount (22)
+        const incCols = [8, tableW - 44, 14, 22];
+        const incColX = [leftX];
+        for (let i = 0; i < incCols.length; i++) {
+          incColX.push(incColX[i] + incCols[i]);
+        }
+
+        // Table Header
+        doc.setFillColor(243, 244, 246);
+        doc.setDrawColor(209, 213, 219);
+        doc.setLineWidth(0.2);
+        doc.rect(leftX, leftY, tableW, theadH, 'FD');
+
+        const incHeaders = ['#', 'Item', 'Qty', 'Amount'];
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(55, 65, 81);
+        doc.text(incHeaders[0], incColX[0] + incCols[0] / 2, leftY + 3.3, { align: 'center' });
+        doc.text(incHeaders[1], incColX[1] + 2, leftY + 3.3);
+        doc.text(incHeaders[2], incColX[2] + incCols[2] / 2, leftY + 3.3, { align: 'center' });
+        doc.text(incHeaders[3], incColX[3] + incCols[3] - 2, leftY + 3.3, { align: 'right' });
+        leftY += theadH;
+
+        // Rows
+        if (incomeList.length === 0) {
+          doc.setFillColor(255, 255, 255);
+          doc.rect(leftX, leftY, tableW, 7, 'FD');
+          doc.setFont(fontFamily, 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(156, 163, 175);
+          doc.text('No income entries recorded', leftX + tableW / 2, leftY + 4.5, { align: 'center' });
+          leftY += 7;
+        } else {
+          incomeList.forEach((row, idx) => {
+            doc.setFillColor(idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 250 : 255);
+            doc.setDrawColor(229, 231, 235);
+            doc.setLineWidth(0.15);
+            doc.rect(leftX, leftY, tableW, rowH, 'FD');
+
+            for (let c = 1; c < incCols.length; c++) {
+              doc.line(incColX[c], leftY, incColX[c], leftY + rowH);
+            }
+
+            const rY = leftY + rowH - 1.6;
+            // No
+            doc.setFont(fontFamily, 'normal');
+            doc.setFontSize(6.8);
+            doc.setTextColor(107, 114, 128);
+            doc.text(String(row.rowNo || idx + 1), incColX[0] + incCols[0] / 2, rY, { align: 'center' });
+
+            // Item
+            doc.setFont(fontFamily, 'bold');
+            doc.setFontSize(7);
+            doc.setTextColor(17, 24, 39);
+            const itemStr = doc.splitTextToSize(String(row.item || '—'), incCols[1] - 3)[0] || row.item;
+            doc.text(itemStr, incColX[1] + 1.5, rY);
+
+            // Qty
+            doc.setFont(fontFamily, 'normal');
+            doc.setFontSize(6.8);
+            doc.setTextColor(75, 85, 99);
+            const qtyStr = row.quantity ? `${row.quantity}${row.unit ? ' ' + row.unit : ''}` : '—';
+            const qtyTrunc = doc.splitTextToSize(qtyStr, incCols[2] - 2)[0] || qtyStr;
+            doc.text(qtyTrunc, incColX[2] + incCols[2] / 2, rY, { align: 'center' });
+
+            // Amount
+            doc.setFont(fontFamily, 'bold');
+            doc.setFontSize(7.2);
+            doc.setTextColor(31, 61, 43);
+            doc.text(formatINR(row.amount), incColX[3] + incCols[3] - 1.5, rY, { align: 'right' });
+
+            leftY += rowH;
+          });
+        }
+
+        // Total Bar
+        doc.setFillColor(235, 245, 238);
+        doc.setDrawColor(31, 61, 43);
+        doc.setLineWidth(0.25);
+        doc.rect(leftX, leftY, tableW, totBarH, 'FD');
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(31, 61, 43);
+        doc.text('TOTAL INCOME', leftX + 2.5, leftY + 3.8);
+        doc.setFontSize(7.8);
+        doc.text(formatINR(totalIncome), leftX + tableW - 2.5, leftY + 3.8, { align: 'right' });
+        leftY += totBarH;
+
+        // ----------------------------------------------------
+        // RIGHT: EXPENSE TABLE (Crimson Brand Theme)
+        // ----------------------------------------------------
+        // Header Banner
+        doc.setFillColor(153, 27, 27); // #991B1B
+        doc.rect(rightX, rightY, tableW, bannerH, 'F');
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`EXPENSE DETAILS (${expenseList.length})`, rightX + 2.5, rightY + 3.7);
+        doc.setFontSize(6.8);
+        doc.setTextColor(254, 202, 202);
+        doc.text('Amount in INR (₹)', rightX + tableW - 2.5, rightY + 3.7, { align: 'right' });
+        rightY += bannerH;
+
+        // Column widths for Expense: No (8) | Item & Desc (tableW - 46) | Category (16) | Amount (22)
+        const expCols = [8, tableW - 46, 16, 22];
+        const expColX = [rightX];
+        for (let i = 0; i < expCols.length; i++) {
+          expColX.push(expColX[i] + expCols[i]);
+        }
+
+        // Table Header
+        doc.setFillColor(243, 244, 246);
+        doc.setDrawColor(209, 213, 219);
+        doc.setLineWidth(0.2);
+        doc.rect(rightX, rightY, tableW, theadH, 'FD');
+
+        const expHeaders = ['#', 'Expense Item', 'Category', 'Amount'];
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(55, 65, 81);
+        doc.text(expHeaders[0], expColX[0] + expCols[0] / 2, rightY + 3.3, { align: 'center' });
+        doc.text(expHeaders[1], expColX[1] + 2, rightY + 3.3);
+        doc.text(expHeaders[2], expColX[2] + expCols[2] / 2, rightY + 3.3, { align: 'center' });
+        doc.text(expHeaders[3], expColX[3] + expCols[3] - 2, rightY + 3.3, { align: 'right' });
+        rightY += theadH;
+
+        // Rows
+        if (expenseList.length === 0) {
+          doc.setFillColor(255, 255, 255);
+          doc.rect(rightX, rightY, tableW, 7, 'FD');
+          doc.setFont(fontFamily, 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(156, 163, 175);
+          doc.text('No expense entries recorded', rightX + tableW / 2, rightY + 4.5, { align: 'center' });
+          rightY += 7;
+        } else {
+          expenseList.forEach((row, idx) => {
+            doc.setFillColor(idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 250 : 255);
+            doc.setDrawColor(229, 231, 235);
+            doc.setLineWidth(0.15);
+            doc.rect(rightX, rightY, tableW, rowH, 'FD');
+
+            for (let c = 1; c < expCols.length; c++) {
+              doc.line(expColX[c], rightY, expColX[c], rightY + rowH);
+            }
+
+            const rY = rightY + rowH - 1.6;
+            // No
+            doc.setFont(fontFamily, 'normal');
+            doc.setFontSize(6.8);
+            doc.setTextColor(107, 114, 128);
+            doc.text(String(row.rowNo || idx + 1), expColX[0] + expCols[0] / 2, rY, { align: 'center' });
+
+            // Item
+            doc.setFont(fontFamily, 'bold');
+            doc.setFontSize(7);
+            doc.setTextColor(17, 24, 39);
+            const itemStr = doc.splitTextToSize(String(row.item || '—'), expCols[1] - 3)[0] || row.item;
+            doc.text(itemStr, expColX[1] + 1.5, rY);
+
+            // Category
+            doc.setFont(fontFamily, 'normal');
+            doc.setFontSize(6.5);
+            doc.setTextColor(107, 114, 128);
+            const catStr = doc.splitTextToSize(String(row.category || '—'), expCols[2] - 2)[0] || (row.category || '—');
+            doc.text(catStr, expColX[2] + expCols[2] / 2, rY, { align: 'center' });
+
+            // Amount
+            doc.setFont(fontFamily, 'bold');
+            doc.setFontSize(7.2);
+            doc.setTextColor(185, 28, 28);
+            doc.text(formatINR(row.amount), expColX[3] + expCols[3] - 1.5, rY, { align: 'right' });
+
+            rightY += rowH;
+          });
+        }
+
+        // Total Bar
+        doc.setFillColor(254, 242, 242);
+        doc.setDrawColor(153, 27, 27);
+        doc.setLineWidth(0.25);
+        doc.rect(rightX, rightY, tableW, totBarH, 'FD');
+        doc.setFont(fontFamily, 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(153, 27, 27);
+        doc.text('TOTAL EXPENSE', rightX + 2.5, rightY + 3.8);
+        doc.setFontSize(7.8);
+        doc.text(formatINR(totalExpense), rightX + tableW - 2.5, rightY + 3.8, { align: 'right' });
+        rightY += totBarH;
+
+        y = Math.max(leftY, rightY) + 3;
+      }
+
       if (section.type === 'incomeTable' || section.type === 'expenseTable') {
         const isIncome = section.type === 'incomeTable';
         const baseTitle = isIncome ? 'INCOME DETAILS' : 'EXPENSE DETAILS';
@@ -336,8 +565,6 @@ async function buildStatementPdfDoc(event) {
 
         y += 2;
 
-        // Column widths (sum = 186mm):
-        // No. (11) | Item (46) | Description (61) | Qty (14) | Unit (15) | Rate (19) | Amount (20)
         const colWidths = [11, 46, 61, 14, 15, 19, 20];
         const colX = [margin];
         for (let i = 0; i < colWidths.length; i++) {
@@ -345,7 +572,6 @@ async function buildStatementPdfDoc(event) {
         }
 
         if (section.rows.length > 0) {
-          // Table Header Row
           const headH = 6.8;
           doc.setFillColor(243, 244, 246);
           doc.setDrawColor(156, 163, 175);
@@ -379,7 +605,6 @@ async function buildStatementPdfDoc(event) {
 
           y += headH;
 
-          // Table Body Rows
           section.rows.forEach((row, rIdx) => {
             doc.setFont(fontFamily, row.isEmptyPlaceholder ? 'normal' : 'bold');
             doc.setFontSize(8);
@@ -402,7 +627,6 @@ async function buildStatementPdfDoc(event) {
             doc.setLineWidth(0.2);
             doc.rect(margin, y, contentWidth, rowH, 'FD');
 
-            // Vertical cell dividers
             for (let cIdx = 1; cIdx < colWidths.length; cIdx++) {
               doc.line(colX[cIdx], y, colX[cIdx], y + rowH);
             }
@@ -496,8 +720,9 @@ async function buildStatementPdfDoc(event) {
 
       // 4. FINANCIAL SUMMARY (Atomic Block)
       if (section.type === 'financialSummary') {
+        const isSingle = layoutMode === 'singlePage';
         y += 1;
-        const sumH = 26;
+        const sumH = isSingle ? 21 : 26;
         doc.setFillColor(250, 250, 250);
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.35);
@@ -505,106 +730,116 @@ async function buildStatementPdfDoc(event) {
 
         // Header line inside summary box
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(8.5);
+        doc.setFontSize(isSingle ? 8 : 8.5);
         doc.setTextColor(17, 24, 39);
-        doc.text('FINANCIAL SUMMARY', margin + 4, y + 5.5);
+        doc.text('FINANCIAL SUMMARY', margin + 3.5, y + (isSingle ? 4.5 : 5.5));
 
         // Status badge on right
-        const badgeW = 38;
+        const badgeW = isSingle ? 36 : 38;
         doc.setFillColor(255, 255, 255);
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.25);
-        doc.rect(rightEdge - badgeW - 4, y + 2, badgeW, 4.8, 'FD');
+        doc.rect(rightEdge - badgeW - 3.5, y + (isSingle ? 1.5 : 2), badgeW, isSingle ? 4.2 : 4.8, 'FD');
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(6.8);
-        doc.text(balanceStatusText, rightEdge - 4 - badgeW / 2, y + 5.3, { align: 'center' });
+        doc.setFontSize(isSingle ? 6.5 : 6.8);
+        doc.text(balanceStatusText, rightEdge - 3.5 - badgeW / 2, y + (isSingle ? 4.5 : 5.3), { align: 'center' });
 
         doc.setDrawColor(209, 213, 219);
         doc.setLineWidth(0.2);
-        doc.line(margin + 4, y + 8, rightEdge - 4, y + 8);
+        doc.line(margin + 3.5, y + (isSingle ? 6.8 : 8), rightEdge - 3.5, y + (isSingle ? 6.8 : 8));
 
         // Total Income Row
         doc.setFont(fontFamily, 'normal');
-        doc.setFontSize(8.2);
+        doc.setFontSize(isSingle ? 7.8 : 8.2);
         doc.setTextColor(55, 65, 81);
-        doc.text('Total Income', margin + 4, y + 12.5);
+        doc.text('Total Income', margin + 3.5, y + (isSingle ? 10.5 : 12.5));
         doc.setFont(fontFamily, 'bold');
-        doc.setTextColor(17, 24, 39);
-        doc.text(formatINR(totalIncome), rightEdge - 4, y + 12.5, { align: 'right' });
+        doc.setTextColor(31, 61, 43);
+        doc.text(formatINR(totalIncome), rightEdge - 3.5, y + (isSingle ? 10.5 : 12.5), { align: 'right' });
 
         // Total Expense Row
         doc.setFont(fontFamily, 'normal');
         doc.setTextColor(55, 65, 81);
-        doc.text('Total Expense', margin + 4, y + 17);
+        doc.text('Total Expense', margin + 3.5, y + (isSingle ? 14 : 17));
         doc.setFont(fontFamily, 'bold');
-        doc.setTextColor(17, 24, 39);
-        doc.text(formatINR(totalExpense), rightEdge - 4, y + 17, { align: 'right' });
+        doc.setTextColor(185, 28, 28);
+        doc.text(formatINR(totalExpense), rightEdge - 3.5, y + (isSingle ? 14 : 17), { align: 'right' });
 
         // Divider before NET BALANCE
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.3);
-        doc.line(margin + 4, y + 19.2, rightEdge - 4, y + 19.2);
+        doc.line(margin + 3.5, y + (isSingle ? 15.8 : 19.2), rightEdge - 3.5, y + (isSingle ? 15.8 : 19.2));
 
         // NET BALANCE Row
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(9.5);
+        doc.setFontSize(isSingle ? 8.8 : 9.5);
         doc.setTextColor(17, 24, 39);
-        doc.text('NET BALANCE', margin + 4, y + 23.8);
-        doc.setFontSize(10.5);
-        doc.text(formattedNetBalance, rightEdge - 4, y + 23.8, { align: 'right' });
+        doc.text('NET BALANCE', margin + 3.5, y + (isSingle ? 19.5 : 23.8));
+        doc.setFontSize(isSingle ? 9.8 : 10.5);
+        doc.setTextColor(netBalance >= 0 ? 31 : 185, netBalance >= 0 ? 61 : 28, netBalance >= 0 ? 43 : 28);
+        doc.text(formattedNetBalance, rightEdge - 3.5, y + (isSingle ? 19.5 : 23.8), { align: 'right' });
 
-        y += sumH + 4.5;
+        y += sumH + (isSingle ? 3 : 4.5);
       }
 
       // 5. NOTES SECTION (Atomic Block)
       if (section.type === 'notes') {
+        const isSingle = layoutMode === 'singlePage';
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(8.2);
+        doc.setFontSize(isSingle ? 7.8 : 8.2);
         doc.setTextColor(17, 24, 39);
-        doc.text('NOTES', margin, y + 3);
-        y += 5;
+        doc.text('NOTES', margin, y + 2.5);
+        y += isSingle ? 4 : 5;
 
         if (event.notes && event.notes.trim()) {
           doc.setFont(fontFamily, 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(isSingle ? 7.5 : 8);
           doc.setTextColor(55, 65, 81);
           const noteLines = doc.splitTextToSize(event.notes.trim(), contentWidth);
-          doc.text(noteLines, margin, y + 3);
-          y += noteLines.length * 4 + 2;
+          const maxLines = isSingle ? Math.min(2, noteLines.length) : noteLines.length;
+          for (let i = 0; i < maxLines; i++) {
+            doc.text(noteLines[i], margin, y + 2.5 + i * 3.5);
+          }
+          y += maxLines * 3.5 + 1.5;
           doc.setDrawColor(209, 213, 219);
           doc.setLineWidth(0.2);
           doc.line(margin, y, rightEdge, y);
-          y += 4;
+          y += isSingle ? 2.5 : 4;
         } else {
           doc.setDrawColor(156, 163, 175);
           doc.setLineWidth(0.2);
-          doc.line(margin, y + 4, rightEdge, y + 4);
-          doc.line(margin, y + 10, rightEdge, y + 10);
-          y += 14;
+          doc.line(margin, y + 3, rightEdge, y + 3);
+          if (!isSingle) {
+            doc.line(margin, y + 8, rightEdge, y + 8);
+            y += 12;
+          } else {
+            y += 5.5;
+          }
         }
       }
 
       // 6. SIGNATURE SECTION (Atomic Block)
       if (section.type === 'signatures') {
-        y += 4;
+        const isSingle = layoutMode === 'singlePage';
+        y += isSingle ? 2 : 4;
         const sigCols = ['Prepared By:', 'Checked By:', 'Authorized Signature:', 'Date:'];
-        const gap = 6;
+        const gap = 5;
         const sigW = (contentWidth - gap * 3) / 4;
 
         sigCols.forEach((label, idx) => {
           const sx = margin + idx * (sigW + gap);
           doc.setFont(fontFamily, 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(isSingle ? 7.2 : 8);
           doc.setTextColor(75, 85, 99);
-          doc.text(label, sx, y + 4);
+          doc.text(label, sx, y + 3.5);
 
           // Generous space for handwritten signature
           doc.setDrawColor(55, 65, 81);
           doc.setLineWidth(0.25);
-          doc.line(sx, y + 16, sx + sigW, y + 16);
+          doc.line(sx, y + (isSingle ? 12 : 16), sx + sigW, y + (isSingle ? 12 : 16));
         });
 
-        y += 20;
+        y += isSingle ? 14 : 20;
       }
     });
 
@@ -660,8 +895,8 @@ async function buildStatementPdfDoc(event) {
 /**
  * Generates and downloads the official A4 PDF statement
  */
-export async function generateEventFinancialPDF(event) {
-  const doc = await buildStatementPdfDoc(event);
+export async function generateEventFinancialPDF(event, options = {}) {
+  const doc = await buildStatementPdfDoc(event, options);
   const cleanEventName = (event.name || 'Event')
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .replace(/__+/g, '_');
@@ -673,8 +908,8 @@ export async function generateEventFinancialPDF(event) {
 /**
  * Generates a live Blob URL for the official A4 PDF statement
  */
-export async function generateEventPDFBlobUrl(event) {
-  const doc = await buildStatementPdfDoc(event);
+export async function generateEventPDFBlobUrl(event, options = {}) {
+  const doc = await buildStatementPdfDoc(event, options);
   const blob = doc.output('blob');
   return URL.createObjectURL(blob);
 }
@@ -682,8 +917,10 @@ export async function generateEventPDFBlobUrl(event) {
 /**
  * Builds the jsPDF document for Periodic Statements (Monthly, Yearly, All-Time)
  */
-async function buildPeriodicStatementPdfDoc(statementData) {
+async function buildPeriodicStatementPdfDoc(statementData, options = {}) {
   if (!statementData) throw new Error('Statement data is required to generate PDF');
+
+  const { layoutMode = 'singlePage' } = options;
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -693,8 +930,8 @@ async function buildPeriodicStatementPdfDoc(statementData) {
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const margin = 12;
-  const contentWidth = pageWidth - margin * 2; // 186mm
+  const margin = layoutMode === 'singlePage' ? 10 : 12;
+  const contentWidth = pageWidth - margin * 2;
   const rightEdge = pageWidth - margin;
 
   // Load Outfit font for ₹ symbol
@@ -736,7 +973,7 @@ async function buildPeriodicStatementPdfDoc(statementData) {
     balanceStatusText = 'NEGATIVE BALANCE';
   }
 
-  const pages = paginatePeriodicStatement(statementData);
+  const pages = paginatePeriodicStatement(statementData, { layoutMode });
 
   pages.forEach((page, pageIndex) => {
     if (pageIndex > 0) {
@@ -1193,112 +1430,122 @@ async function buildPeriodicStatementPdfDoc(statementData) {
       }
 
       if (section.type === 'financialSummary') {
+        const isSingle = layoutMode === 'singlePage';
         y += 1;
-        const sumH = 26;
+        const sumH = isSingle ? 21 : 26;
         doc.setFillColor(250, 250, 250);
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.35);
         doc.rect(margin, y, contentWidth, sumH, 'FD');
 
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(8.5);
+        doc.setFontSize(isSingle ? 8 : 8.5);
         doc.setTextColor(17, 24, 39);
-        doc.text('PERIOD FINANCIAL SUMMARY', margin + 4, y + 5.5);
+        doc.text('PERIOD FINANCIAL SUMMARY', margin + 3.5, y + (isSingle ? 4.5 : 5.5));
 
-        const badgeW = 38;
+        const badgeW = isSingle ? 36 : 38;
         doc.setFillColor(255, 255, 255);
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.25);
-        doc.rect(rightEdge - badgeW - 4, y + 2, badgeW, 4.8, 'FD');
+        doc.rect(rightEdge - badgeW - 3.5, y + (isSingle ? 1.5 : 2), badgeW, isSingle ? 4.2 : 4.8, 'FD');
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(6.8);
-        doc.text(balanceStatusText, rightEdge - 4 - badgeW / 2, y + 5.3, { align: 'center' });
+        doc.setFontSize(isSingle ? 6.5 : 6.8);
+        doc.text(balanceStatusText, rightEdge - 3.5 - badgeW / 2, y + (isSingle ? 4.5 : 5.3), { align: 'center' });
 
         doc.setDrawColor(209, 213, 219);
         doc.setLineWidth(0.2);
-        doc.line(margin + 4, y + 8, rightEdge - 4, y + 8);
+        doc.line(margin + 3.5, y + (isSingle ? 6.8 : 8), rightEdge - 3.5, y + (isSingle ? 6.8 : 8));
 
         doc.setFont(fontFamily, 'normal');
-        doc.setFontSize(8.2);
+        doc.setFontSize(isSingle ? 7.8 : 8.2);
         doc.setTextColor(55, 65, 81);
-        doc.text('Total Events Revenue', margin + 4, y + 12.5);
+        doc.text('Total Events Revenue', margin + 3.5, y + (isSingle ? 10.5 : 12.5));
         doc.setFont(fontFamily, 'bold');
         doc.setTextColor(17, 24, 39);
-        doc.text(formatINR(totalIncome), rightEdge - 4, y + 12.5, { align: 'right' });
+        doc.text(formatINR(totalIncome), rightEdge - 3.5, y + (isSingle ? 10.5 : 12.5), { align: 'right' });
 
         doc.setFont(fontFamily, 'normal');
         doc.setTextColor(55, 65, 81);
-        doc.text('Total Operating Expenses', margin + 4, y + 17);
+        doc.text('Total Operating Expenses', margin + 3.5, y + (isSingle ? 14 : 17));
         doc.setFont(fontFamily, 'bold');
         doc.setTextColor(17, 24, 39);
-        doc.text(formatINR(totalExpense), rightEdge - 4, y + 17, { align: 'right' });
+        doc.text(formatINR(totalExpense), rightEdge - 3.5, y + (isSingle ? 14 : 17), { align: 'right' });
 
         doc.setDrawColor(17, 24, 39);
         doc.setLineWidth(0.3);
-        doc.line(margin + 4, y + 19.2, rightEdge - 4, y + 19.2);
+        doc.line(margin + 3.5, y + (isSingle ? 15.8 : 19.2), rightEdge - 3.5, y + (isSingle ? 15.8 : 19.2));
 
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(9.5);
+        doc.setFontSize(isSingle ? 8.8 : 9.5);
         doc.setTextColor(17, 24, 39);
-        doc.text('NET BALANCE / PROFIT', margin + 4, y + 23.8);
-        doc.setFontSize(10.5);
-        doc.text(formattedNetBalance, rightEdge - 4, y + 23.8, { align: 'right' });
+        doc.text('NET BALANCE / PROFIT', margin + 3.5, y + (isSingle ? 19.5 : 23.8));
+        doc.setFontSize(isSingle ? 9.8 : 10.5);
+        doc.text(formattedNetBalance, rightEdge - 3.5, y + (isSingle ? 19.5 : 23.8), { align: 'right' });
 
-        y += sumH + 4.5;
+        y += sumH + (isSingle ? 3 : 4.5);
       }
 
       if (section.type === 'notes') {
+        const isSingle = layoutMode === 'singlePage';
         doc.setFont(fontFamily, 'bold');
-        doc.setFontSize(8.2);
+        doc.setFontSize(isSingle ? 7.8 : 8.2);
         doc.setTextColor(17, 24, 39);
-        doc.text('AUDIT NOTES & REMARKS', margin, y + 3);
-        y += 5;
+        doc.text('AUDIT NOTES & REMARKS', margin, y + 2.5);
+        y += isSingle ? 4 : 5;
 
         if (notes && notes.trim()) {
           doc.setFont(fontFamily, 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(isSingle ? 7.5 : 8);
           doc.setTextColor(55, 65, 81);
           const noteLines = doc.splitTextToSize(notes.trim(), contentWidth);
-          doc.text(noteLines, margin, y + 3);
-          y += noteLines.length * 4 + 2;
+          const maxLines = isSingle ? Math.min(2, noteLines.length) : noteLines.length;
+          for (let i = 0; i < maxLines; i++) {
+            doc.text(noteLines[i], margin, y + 2.5 + i * 3.5);
+          }
+          y += maxLines * 3.5 + 1.5;
           doc.setDrawColor(209, 213, 219);
           doc.setLineWidth(0.2);
           doc.line(margin, y, rightEdge, y);
-          y += 4;
+          y += isSingle ? 2.5 : 4;
         } else {
           doc.setDrawColor(156, 163, 175);
           doc.setLineWidth(0.2);
-          doc.line(margin, y + 4, rightEdge, y + 4);
-          doc.line(margin, y + 10, rightEdge, y + 10);
-          y += 14;
+          doc.line(margin, y + 3, rightEdge, y + 3);
+          if (!isSingle) {
+            doc.line(margin, y + 8, rightEdge, y + 8);
+            y += 12;
+          } else {
+            y += 5.5;
+          }
         }
       }
 
       if (section.type === 'signatures') {
-        y += 4;
+        const isSingle = layoutMode === 'singlePage';
+        y += isSingle ? 2 : 4;
         const prepStr = preparedBy ? `Prepared By: ${preparedBy}` : 'Prepared By:';
         const sigCols = [prepStr, 'Checked By:', 'Authorized Signature:', 'Date:'];
-        const gap = 6;
+        const gap = 5;
         const sigW = (contentWidth - gap * 3) / 4;
 
         sigCols.forEach((label, idx) => {
           const sx = margin + idx * (sigW + gap);
           doc.setFont(fontFamily, 'normal');
-          doc.setFontSize(7.8);
+          doc.setFontSize(isSingle ? 7.2 : 7.8);
           doc.setTextColor(75, 85, 99);
-          doc.text(label, sx, y + 4);
+          doc.text(label, sx, y + 3.5);
 
           doc.setDrawColor(55, 65, 81);
           doc.setLineWidth(0.25);
-          doc.line(sx, y + 16, sx + sigW, y + 16);
+          doc.line(sx, y + (isSingle ? 12 : 16), sx + sigW, y + (isSingle ? 12 : 16));
         });
 
-        y += 20;
+        y += isSingle ? 14 : 20;
       }
     });
 
     // Continuation notice & footer
-    const footerTopY = pageHeight - margin - 10;
+    const footerTopY = pageHeight - margin - 8;
 
     if (page.continuesOnNextPage) {
       doc.setFont(fontFamily, 'bold');
@@ -1337,8 +1584,8 @@ async function buildPeriodicStatementPdfDoc(statementData) {
 /**
  * Generates and downloads the official A4 PDF statement for Monthly / Yearly / All periods
  */
-export async function generatePeriodicFinancialPDF(statementData) {
-  const doc = await buildPeriodicStatementPdfDoc(statementData);
+export async function generatePeriodicFinancialPDF(statementData, options = {}) {
+  const doc = await buildPeriodicStatementPdfDoc(statementData, options);
   const cleanTitle = (statementData.periodTitle || 'Periodic_Statement')
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .replace(/__+/g, '_');

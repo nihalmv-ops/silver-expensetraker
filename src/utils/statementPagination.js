@@ -66,18 +66,8 @@ function estimateNotesHeightMm(notesText) {
   return Math.max(16, 9 + totalWrappedLines * 4);
 }
 
-export function paginateEventStatement(event) {
-  const MAX_CONTENT_HEIGHT_MM = 259;
-  const PAGE1_HEADER_AND_DETAILS_MM = 55;
-  const CONTINUATION_HEADER_MM = 20;
-
-  const TABLE_TITLE_AND_HEAD_MM = 11;
-  const TABLE_TOTAL_BAR_MM = 8.5;
-  const SECTION_GAP_MM = 3.5;
-
-  const FINANCIAL_SUMMARY_MM = 29;
-  const NOTES_MM = estimateNotesHeightMm(event?.notes);
-  const SIGNATURES_MM = 22;
+export function paginateEventStatement(event, options = {}) {
+  const { layoutMode = 'singlePage' } = options;
 
   const incomeEntries = (event?.incomeEntries || []).map((entry, idx) => ({
     ...entry,
@@ -91,6 +81,45 @@ export function paginateEventStatement(event) {
     rowHeightMm: estimateRowHeightMm(entry),
   }));
 
+  // SINGLE-PAGE A4 MASTER MODEL (Fits all details on 1 A4 Page)
+  if (layoutMode === 'singlePage') {
+    return [
+      {
+        pageNumber: 1,
+        totalPages: 1,
+        isContinuation: false,
+        showEventDetails: true,
+        layoutMode: 'singlePage',
+        incomeEntries,
+        expenseEntries,
+        sections: [
+          {
+            type: 'sideBySideTables',
+            incomeEntries,
+            expenseEntries,
+          },
+          { type: 'financialSummary' },
+          { type: 'notes' },
+          { type: 'signatures' },
+        ],
+        continuesOnNextPage: false,
+      },
+    ];
+  }
+
+  // MULTI-PAGE EXPANDED MODEL (Splits across multiple pages if content exceeds 1 page)
+  const MAX_CONTENT_HEIGHT_MM = 259;
+  const PAGE1_HEADER_AND_DETAILS_MM = 55;
+  const CONTINUATION_HEADER_MM = 20;
+
+  const TABLE_TITLE_AND_HEAD_MM = 11;
+  const TABLE_TOTAL_BAR_MM = 8.5;
+  const SECTION_GAP_MM = 3.5;
+
+  const FINANCIAL_SUMMARY_MM = 29;
+  const NOTES_MM = estimateNotesHeightMm(event?.notes);
+  const SIGNATURES_MM = 22;
+
   const pages = [];
   let currentPage = {
     isContinuation: false,
@@ -98,6 +127,7 @@ export function paginateEventStatement(event) {
     sections: [],
     usedHeightMm: PAGE1_HEADER_AND_DETAILS_MM,
     continuesOnNextPage: false,
+    layoutMode: 'multiPage',
   };
   pages.push(currentPage);
 

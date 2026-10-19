@@ -6,6 +6,8 @@ import {
   FileText,
   UserCheck,
   AlignLeft,
+  Layers,
+  CheckCircle2,
 } from 'lucide-react';
 import OfficialStatementDocument from './OfficialStatementDocument.jsx';
 import { generateEventFinancialPDF } from '../utils/pdfGenerator.js';
@@ -17,6 +19,7 @@ export default function StatementPreviewModal({
   event,
   onUpdateEvent,
 }) {
+  const [layoutMode, setLayoutMode] = useState('singlePage'); // 'singlePage' | 'multiPage'
   const [isDownloading, setIsDownloading] = useState(false);
   const [coordinator, setCoordinator] = useState('');
   const [notes, setNotes] = useState('');
@@ -47,8 +50,8 @@ export default function StatementPreviewModal({
 
   const pages = useMemo(() => {
     if (!currentEvent) return [];
-    return paginateEventStatement(currentEvent);
-  }, [currentEvent]);
+    return paginateEventStatement(currentEvent, { layoutMode });
+  }, [currentEvent, layoutMode]);
 
   if (!isOpen || !currentEvent) return null;
 
@@ -68,7 +71,7 @@ export default function StatementPreviewModal({
   const handleSaveAsPdf = async () => {
     try {
       setIsDownloading(true);
-      await generateEventFinancialPDF(currentEvent);
+      await generateEventFinancialPDF(currentEvent, { layoutMode });
     } catch (err) {
       console.error('PDF error:', err);
       alert('Failed to generate PDF: ' + err.message);
@@ -99,8 +102,12 @@ export default function StatementPreviewModal({
                   <h2 className="text-xs sm:text-base font-bold tracking-tight text-white truncate">
                     A4 Print Preview — Official Statement
                   </h2>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#C29C5E] border border-[#C29C5E]/30 shrink-0">
-                    {pages.length === 1 ? '1 A4 Page' : `${pages.length} A4 Pages`}
+                  <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${
+                    layoutMode === 'singlePage'
+                      ? 'bg-emerald-500/20 text-[#A3D9B5] border-emerald-500/40'
+                      : 'bg-white/10 text-[#C29C5E] border-[#C29C5E]/30'
+                  }`}>
+                    {layoutMode === 'singlePage' ? '1 A4 Page Model (All Details)' : `${pages.length} A4 Pages`}
                   </span>
                 </div>
                 <p className="text-[10.5px] sm:text-[11px] text-gray-300 truncate">
@@ -118,21 +125,50 @@ export default function StatementPreviewModal({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+            {/* Model Selector Toggle */}
+            <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('singlePage')}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  layoutMode === 'singlePage'
+                    ? 'bg-[#1F3D2B] text-white shadow-xs border border-[#A3D9B5]/40'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Fits all event details into 1 single A4 Page"
+              >
+                <Layers className="w-3.5 h-3.5 text-[#C29C5E]" />
+                <span>1 A4 Page Model</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('multiPage')}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  layoutMode === 'multiPage'
+                    ? 'bg-[#1F3D2B] text-white shadow-xs border border-[#A3D9B5]/40'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Multi-page expanded layout"
+              >
+                <span>Multi-Page</span>
+              </button>
+            </div>
+
             <button
               onClick={handlePrintStatement}
               className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#111827] bg-white hover:bg-gray-100 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               title="Print official A4 statement directly"
             >
               <Printer className="w-3.5 h-3.5 text-[#1F3D2B] shrink-0" />
-              <span>PRINT STATEMENT</span>
+              <span>PRINT</span>
             </button>
 
             <button
               onClick={handleSaveAsPdf}
               disabled={isDownloading}
               className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white bg-[#1F3D2B] hover:bg-[#14281C] rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/15"
-              title="Save exact A4 statement as PDF"
+              title="Save exact 1 A4 Page statement as PDF"
             >
               <Download className={`w-3.5 h-3.5 text-[#C29C5E] shrink-0 ${isDownloading ? 'animate-bounce' : ''}`} />
               <span>{isDownloading ? 'SAVING PDF...' : 'SAVE AS PDF'}</span>
@@ -181,7 +217,7 @@ export default function StatementPreviewModal({
 
         {/* Scrollable A4 Pages Viewport */}
         <div className="flex-1 overflow-auto p-2.5 sm:p-6 md:p-8 bg-[#525659]">
-          <OfficialStatementDocument event={currentEvent} />
+          <OfficialStatementDocument event={currentEvent} layoutMode={layoutMode} />
         </div>
       </div>
     </div>
